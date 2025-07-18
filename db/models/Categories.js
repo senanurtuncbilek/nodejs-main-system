@@ -1,8 +1,9 @@
-const moongose = require("mongoose");
+const mongoose = require("mongoose");
 
 const schema = mongoose.Schema({
+    name: {type: String, required: true},
     is_active: {type: Boolean, default: true},
-    created_by: {type: mongoose.SchemaTypes.ObjectId, required: true},
+    created_by: {type: mongoose.SchemaTypes.ObjectId},
     location: String,
     proc_type: String,
     log: String,
