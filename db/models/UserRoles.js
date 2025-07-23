@@ -1,8 +1,8 @@
-const moongose = require("mongoose");
+const mongoose = require("mongoose");
 
 const schema = mongoose.Schema({
-    role_id: {type: moongose.SchemaTypes.ObjectId, required: true},
-    user_id: {type: moongose.SchemaTypes.ObjectId, required: true},
+    role_id: {type: mongoose.SchemaTypes.ObjectId, required: true},
+    user_id: {type: mongoose.SchemaTypes.ObjectId, required: true},
 },{
     versionKey: false,
     timestamps:{
@@ -16,6 +16,6 @@ class UserRoles extends mongoose.Model{
 
 }
 
-schema.loadClass(AuditLogs);
+schema.loadClass(UserRoles);
 module.exports = mongoose.model("user_roles", schema);
  

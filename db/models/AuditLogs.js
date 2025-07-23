@@ -1,4 +1,4 @@
-const moongose = require("mongoose");
+const mongoose = require("mongoose");
 
 const schema = mongoose.Schema({
     level: String,

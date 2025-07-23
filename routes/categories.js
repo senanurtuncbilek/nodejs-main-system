@@ -20,7 +20,7 @@ router.get("/", async (req, res, next) => {
 router.post("/add", async (req, res) => {
   let body = req.body;
   try {
-    if (!body.name)     // name is required
+    if (!body.name)    // name is required
       throw new CustomError(
         Enum.HTTP_CODES.BAD_REQUEST,
         "Validation Error!",
