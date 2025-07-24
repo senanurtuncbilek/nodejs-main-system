@@ -4,6 +4,8 @@ const Categories = require("../db/models/Categories");
 const Response = require("../lib/Response");
 const CustomError = require("../lib/Error");
 const Enum = require("../config/Enum");
+const AuditLogs = require("../lib/AuditLogs");
+const logger = require("../lib/logger/LoggerClass");
 
 // Get all categories
 router.get("/", async (req, res, next) => {
@@ -20,7 +22,8 @@ router.get("/", async (req, res, next) => {
 router.post("/add", async (req, res) => {
   let body = req.body;
   try {
-    if (!body.name)    // name is required
+    if (!body.name)
+      // name is required
       throw new CustomError(
         Enum.HTTP_CODES.BAD_REQUEST,
         "Validation Error!",
@@ -35,8 +38,12 @@ router.post("/add", async (req, res) => {
 
     await category.save();
 
+    AuditLogs.info(req.user?.email, "Categories", "Add", category);
+    logger.info(req.user?.email, "Categories", "Add", category);
+
     res.json(Response.successResponse({ success: true }));
   } catch (err) {
+    logger.error(req.user?.email, "Categories", "Add", err);
     let errorResponse = Response.errorResponse(err);
     res.status(errorResponse.code).json(errorResponse);
   }
@@ -61,8 +68,12 @@ router.post("/update", async (req, res) => {
 
     await Categories.updateOne({ _id: body._id }, updates);
 
-    res.json(Response.successResponse({ success: true }));
+    AuditLogs.info(req.user?.email, "Categories", "Update", {
+      _id: body._id,
+      updates,
+    });
 
+    res.json(Response.successResponse({ success: true }));
   } catch (err) {
     let errorResponse = Response.errorResponse(err);
     res.status(errorResponse.code).json(errorResponse);
@@ -81,10 +92,9 @@ router.post("/delete", async (req, res) => {
         "_id field must be filled"
       );
 
-      await Categories.deleteOne({_id: body._id});
-
-      res.json(Response.successResponse({ success: true }));
-
+    await Categories.deleteOne({ _id: body._id });
+    AuditLogs.info(req.user?.email, "Categories", "Delete", { _id: body._id });
+    res.json(Response.successResponse({ success: true }));
   } catch (err) {
     let errorResponse = Response.errorResponse(err);
     res.status(errorResponse.code).json(errorResponse);

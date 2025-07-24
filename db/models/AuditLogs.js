@@ -5,7 +5,7 @@ const schema = mongoose.Schema({
     email: String,
     location: String,
     proc_type: String,
-    log: String,
+    log: mongoose.SchemaTypes.Mixed
 },{
     versionKey: false,
     timestamps:{
@@ -21,4 +21,3 @@ class AuditLogs extends mongoose.Model{
 
 schema.loadClass(AuditLogs);
 module.exports = mongoose.model("audit_logs", schema);
- 
