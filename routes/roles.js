@@ -7,8 +7,13 @@ const CustomError = require("../lib/Error");
 const { HTTP_CODES } = require("../config/Enum");
 const role_privileges = require("../config/role_privileges");
 const RolePrivileges = require("../db/models/RolePrivileges");
+const auth = require("../lib/auth")();
 
-router.get("/", async (req, res) => {
+router.all("*", auth.authenticate(), (res, req, next) =>{
+  next();
+});
+
+router.get("/" /*,auth.checkRoles("role_view")*/,  async (req, res) => {
   try {
     let roles = await Roles.find({});
 
@@ -19,7 +24,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.post("/add", async (req, res) => {
+router.post("/add", /*auth.checkRoles("role_add"),*/ async (req, res) => {
   let body = req.body;
 
   try {
@@ -66,7 +71,7 @@ router.post("/add", async (req, res) => {
   }
 });
 
-router.post("/update", async (req, res) => {
+router.post("/update"/*, auth.checkRoles("role_update")*/, async (req, res) => {
   let body = req.body;
 
   try {
@@ -120,7 +125,7 @@ router.post("/update", async (req, res) => {
   }
 });
 
-router.post("/delete", async (req, res) => {
+router.post("/delete", /*auth.checkRoles("role_delete"),*/ async (req, res) => {
   let body = req.body;
 
   try {
