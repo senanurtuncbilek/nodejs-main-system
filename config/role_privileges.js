@@ -1,4 +1,5 @@
 module.exports = {
+  // RolePrivileges.permission === privileges.key
   privGroups: [
     {
       id: "USERS",

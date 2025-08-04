@@ -12,17 +12,7 @@ const UserRoles = require("../db/models/UserRoles");
 const Roles = require("../db/models/Roles");
 const config = require("../config");
 const jwt = require("jwt-simple");
-
-router.get("/", async (req, res) => {
-  try {
-    let users = await Users.find({});
-
-    res.json(Response.successResponse(users));
-  } catch (err) {
-    let errorResponse = Response.errorResponse(err);
-    res.status(errorResponse.code).json(errorResponse);
-  }
-});
+const auth = require("../lib/auth")();
 
 router.post("/register", async (req, res) => {
   let body = req.body;
@@ -95,7 +85,71 @@ router.post("/register", async (req, res) => {
   }
 });
 
-router.post("/add", async (req, res) => {
+router.post("/auth", async (req, res) => {
+  try {
+    let { email, password } = req.body;
+
+    Users.validateFieldsBeforeAuth(email, password);
+
+    let user = await Users.findOne({ email });
+
+    if (!user)
+      throw new CustomError(
+        Enum.HTTP_CODES.UNAUTHORIZED,
+        "Validation Error",
+        "email or password wrong!"
+      );
+
+    if (!user.validPassword(password))
+      throw new CustomError(
+        Enum.HTTP_CODES.UNAUTHORIZED,
+        "Validation Error",
+        "email or password wrong!"
+      );
+
+    let payload = {
+      id: user._id,
+      exp: parseInt(Date.now() / 1000) + config.JWT.EXPIRE_TIME,
+
+      //parseInt(Date.now() / 1000) * config.JWT.EXPIRE_TIME,
+    };
+
+    let token = jwt.encode(payload, config.JWT.SECRET);
+
+    let userData = {
+      _id: user._id,
+      first_name: user.first_name,
+      last_name: user.last_name,
+    };
+
+    res.json(Response.successResponse({ token, user: userData }));
+  } catch (err) {
+    console.error("AUTH ERROR", err);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", detail: err.message });
+
+    // let errorResponse = Response.errorResponse(err);
+    // res.status(errorResponse.code).json(errorResponse);
+  }
+});
+
+router.all("*", auth.authenticate(), (res, req, next) =>{
+  next();
+});
+
+router.get("/", /*auth.checkRoles("user_view"),*/ async (req, res) => {
+  try {
+    let users = await Users.find({});
+
+    res.json(Response.successResponse(users));
+  } catch (err) {
+    let errorResponse = Response.errorResponse(err);
+    res.status(errorResponse.code).json(errorResponse);
+  }
+});
+
+router.post("/add"/*, auth.checkRoles("user_add")*/, async (req, res) => {
   let body = req.body;
 
   try {
@@ -131,7 +185,7 @@ router.post("/add", async (req, res) => {
         "roles field must be an array"
       );
 
-    let roles = await Roles.find({ _id: { $in: body.roles } });
+    let roles = await Roles.find({ _id: { $in: body.roles } }); //body.roles içindeki _id değerlerine karşılık gelen rolleri veritabanından bul
 
     if (roles.length == 0)
       throw new CustomError(
@@ -152,6 +206,7 @@ router.post("/add", async (req, res) => {
       phone_number: body.phone_number,
     });
 
+    // her rolü kaydet
     for (let i = 0; i < roles.length; i++) {
       await UserRoles.create({
         role_id: roles[i]._id,
@@ -168,7 +223,8 @@ router.post("/add", async (req, res) => {
   }
 });
 
-router.post("/update", async (req, res) => {
+
+router.post("/update"/*, auth.checkRoles("user_update")*/, async (req, res) => {
   try {
     let body = req.body;
     let updates = {};
@@ -235,7 +291,7 @@ router.post("/update", async (req, res) => {
   }
 });
 
-router.post("/delete", async (req, res) => {
+router.post("/delete", /*auth.checkRoles("user_delete"),*/ async (req, res) => {
   try {
     let body = req.body;
 
@@ -257,52 +313,5 @@ router.post("/delete", async (req, res) => {
   }
 });
 
-router.post("/auth", async (req, res) => {
-  try {
-    let { email, password } = req.body;
 
-    Users.validateFieldsBeforeAuth(email, password);
-
-    let user = await Users.findOne({ email });
-
-    if (!user)
-      throw new CustomError(
-        Enum.HTTP_CODES.UNAUTHORIZED,
-        "Validation Error",
-        "email or password wrong!"
-      );
-
-    if (!user.validPassword(password))
-      throw new CustomError(
-        Enum.HTTP_CODES.UNAUTHORIZED,
-        "Validation Error",
-        "email or password wrong!"
-      );
-
-    let payload = {
-      id: user._id,
-      exp: parseInt(Date.now() / 1000) + config.JWT.EXPIRE_TIME,
-
-      //parseInt(Date.now() / 1000) * config.JWT.EXPIRE_TIME,
-    };
-
-    let token = jwt.encode(payload, config.JWT.SECRET);
-
-    let userData = {
-      _id: user._id,
-      first_name: user.first_name,
-      last_name: user.last_name,
-    };
-
-    res.json(Response.successResponse({ token, user: userData }));
-  } catch (err) {
-    console.error("AUTH ERROR", err);
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", detail: err.message });
-
-    // let errorResponse = Response.errorResponse(err);
-    // res.status(errorResponse.code).json(errorResponse);
-  }
-});
 module.exports = router;
