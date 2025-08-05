@@ -13,6 +13,8 @@ const Roles = require("../db/models/Roles");
 const config = require("../config");
 const jwt = require("jwt-simple");
 const auth = require("../lib/auth")();
+const I18n = require("../lib/i18n");
+const i18n = new I18n(config.DEFAULT_LANG); // örnek oluştur
 
 router.post("/register", async (req, res) => {
   let body = req.body;
@@ -29,8 +31,10 @@ router.post("/register", async (req, res) => {
     if (!body.email)
       throw new CustomError(
         HTTP_CODES.BAD_REQUEST,
-        "Validation Error!",
-        "email field must be filled"
+        i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language),
+        i18n.translate("COMMON.FIELD_MUST_BE_FILLED", req.user.language, [
+          "email",
+        ])
       );
     if (is.not.email(body.email))
       throw new CustomError(
@@ -96,15 +100,15 @@ router.post("/auth", async (req, res) => {
     if (!user)
       throw new CustomError(
         Enum.HTTP_CODES.UNAUTHORIZED,
-        "Validation Error",
-        "email or password wrong!"
+        i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language),
+        i18n.translate("USERS.AUTH_ERROR", req.user.language)
       );
 
     if (!user.validPassword(password))
       throw new CustomError(
         Enum.HTTP_CODES.UNAUTHORIZED,
-        "Validation Error",
-        "email or password wrong!"
+        i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language),
+        i18n.translate("USERS.AUTH_ERROR", req.user.language)
       );
 
     let payload = {
@@ -134,22 +138,25 @@ router.post("/auth", async (req, res) => {
   }
 });
 
-router.all("*", auth.authenticate(), (res, req, next) =>{
+router.all("*", auth.authenticate(), (res, req, next) => {
   next();
 });
 
-router.get("/", /*auth.checkRoles("user_view"),*/ async (req, res) => {
-  try {
-    let users = await Users.find({});
+router.get(
+  "/",
+  /*auth.checkRoles("user_view"),*/ async (req, res) => {
+    try {
+      let users = await Users.find({});
 
-    res.json(Response.successResponse(users));
-  } catch (err) {
-    let errorResponse = Response.errorResponse(err);
-    res.status(errorResponse.code).json(errorResponse);
+      res.json(Response.successResponse(users));
+    } catch (err) {
+      let errorResponse = Response.errorResponse(err);
+      res.status(errorResponse.code).json(errorResponse);
+    }
   }
-});
+);
 
-router.post("/add"/*, auth.checkRoles("user_add")*/, async (req, res) => {
+router.post("/add" /*, auth.checkRoles("user_add")*/, async (req, res) => {
   let body = req.body;
 
   try {
@@ -160,29 +167,38 @@ router.post("/add"/*, auth.checkRoles("user_add")*/, async (req, res) => {
     if (!body.email)
       throw new CustomError(
         HTTP_CODES.BAD_REQUEST,
-        "Validation Error!",
-        "email field must be filled"
+        i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language),
+        i18n.translate("COMMON.FIELD_MUST_BE_FILLED", req.user.language, [
+          "email",
+        ])
       );
 
     if (is.not.email(body.email))
       throw new CustomError(
         Enum.HTTP_CODES.BAD_REQUEST,
-        "Validation Error!",
-        "email field must be an email format"
+        i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language),
+        i18n.translate("USERS.EMAİL_FORMAT_ERROR", req.user.language)
       );
 
     if (!body.password)
       throw new CustomError(
         HTTP_CODES.BAD_REQUEST,
-        "Validation Error!",
-        "email field must be filled"
+      i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language),
+        i18n.translate("COMMON.FIELD_MUST_BE_FILLED", req.user.language, [
+          "password",
+        ])
       );
+      if (!body.password.length <Enum.PASSWORD_LENGTH)
+      throw new CustomError(
+        HTTP_CODES.BAD_REQUEST,
+        i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language),
+      i18n.translate("USERS.PASSWORD_LENGTH_ERROR", req.user.language, [Enum.PASSWORD_LENGTH]),
+    );
 
     if (!body.roles || !Array.isArray(body.roles) || body.roles.length == 0)
       throw new CustomError(
         Enum.HTTP_CODES.BAD_REQUEST,
-        "Validation Error!",
-        "roles field must be an array"
+       i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language), i18n.translate("COMMON.FIELD_MUST_BE_TYPE", req.user.language, ["roles", "Array"])
       );
 
     let roles = await Roles.find({ _id: { $in: body.roles } }); //body.roles içindeki _id değerlerine karşılık gelen rolleri veritabanından bul
@@ -190,8 +206,7 @@ router.post("/add"/*, auth.checkRoles("user_add")*/, async (req, res) => {
     if (roles.length == 0)
       throw new CustomError(
         Enum.HTTP_CODES.BAD_REQUEST,
-        "Validation Error!",
-        "roles field must be an array"
+        i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language), i18n.translate("COMMON.FIELD_MUST_BE_TYPE", req.user.language, ["roles", "Array"])
       );
 
     const salt = await bcrypt.genSalt(saltRounds);
@@ -223,95 +238,98 @@ router.post("/add"/*, auth.checkRoles("user_add")*/, async (req, res) => {
   }
 });
 
+router.post(
+  "/update" /*, auth.checkRoles("user_update")*/,
+  async (req, res) => {
+    try {
+      let body = req.body;
+      let updates = {};
 
-router.post("/update"/*, auth.checkRoles("user_update")*/, async (req, res) => {
-  try {
-    let body = req.body;
-    let updates = {};
+      if (!body._id)
+        throw new CustomError(
+          HTTP_CODES.BAD_GATEWAY,
+           i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language), i18n.translate("COMMON.FIELD_MUST_BE_FILLED", req.user.language, ["_id"])
+        );
 
-    if (!body._id)
-      throw new CustomError(
-        HTTP_CODES.BAD_GATEWAY,
-        "Validation Error!",
-        "_id field must be filled"
-      );
+      if (body.password)
+        updates.password = await bcrypt.hash(
+          body.password,
+          await bcrypt.genSalt(saltRounds)
+        );
 
-    if (body.password)
-      updates.password = await bcrypt.hash(
-        body.password,
-        await bcrypt.genSalt(saltRounds)
-      );
+      if (body.first_name) updates.first_name = body.first_name;
+      if (body.last_name) updates.last_name = body.last_name;
+      if (typeof body.is_active === "boolean")
+        updates.is_active = body.is_active;
+      if (body.phone_number) updates.phone_number = body.phone_number;
 
-    if (body.first_name) updates.first_name = body.first_name;
-    if (body.last_name) updates.last_name = body.last_name;
-    if (typeof body.is_active === "boolean") updates.is_active = body.is_active;
-    if (body.phone_number) updates.phone_number = body.phone_number;
+      if (Array.isArray(body.roles) && body.roles.length > 0) {
+        let userRoles = await UserRoles.find({ user_id: body._id });
 
-    if (Array.isArray(body.roles) && body.roles.length > 0) {
-      let userRoles = await UserRoles.find({ user_id: body._id });
+        let removedRoles = userRoles.filter(
+          (x) => !body.roles.includes(x.role_id)
+        );
+        let newRoles = body.roles.filter(
+          (x) => !userRoles.map((r) => r.role_id).includes(x)
+        );
 
-      let removedRoles = userRoles.filter(
-        (x) => !body.roles.includes(x.role_id)
-      );
-      let newRoles = body.roles.filter(
-        (x) => !userRoles.map((r) => r.role_id).includes(x)
-      );
-
-      if (removedRoles.length > 0) {
-        await UserRoles.deleteMany({
-          _id: { $in: removedRoles.map((x) => x._id.toString()) },
-        });
-      }
-      if (newRoles.length > 0) {
-        for (let i = 0; i < newRoles.length; i++) {
-          let userRole = new UserRoles({
-            role_id: newRoles[i],
-            user_id: body._id,
+        if (removedRoles.length > 0) {
+          await UserRoles.deleteMany({
+            _id: { $in: removedRoles.map((x) => x._id.toString()) },
           });
-          await userRole.save();
+        }
+        if (newRoles.length > 0) {
+          for (let i = 0; i < newRoles.length; i++) {
+            let userRole = new UserRoles({
+              role_id: newRoles[i],
+              user_id: body._id,
+            });
+            await userRole.save();
+          }
         }
       }
+
+      let roles = await Roles.find({ _id: { $in: body.roles } });
+
+      if (roles.length == 0)
+        throw new CustomError(
+          Enum.HTTP_CODES.BAD_REQUEST,
+          i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language), i18n.translate("COMMON.FIELD_MUST_BE_FILLED", req.user.language, ["_id"])
+        );
+
+      await Users.updateOne({ _id: body._id }, updates);
+
+      res.json(Response.successResponse({ success: true }));
+    } catch (err) {
+      let errorResponse = Response.errorResponse(err);
+      res.status(errorResponse.code).json(errorResponse);
     }
-
-    let roles = await Roles.find({ _id: { $in: body.roles } });
-
-    if (roles.length == 0)
-      throw new CustomError(
-        Enum.HTTP_CODES.BAD_REQUEST,
-        "Validation Error!",
-        "roles field must be an array"
-      );
-
-    await Users.updateOne({ _id: body._id }, updates);
-
-    res.json(Response.successResponse({ success: true }));
-  } catch (err) {
-    let errorResponse = Response.errorResponse(err);
-    res.status(errorResponse.code).json(errorResponse);
   }
-});
+);
 
-router.post("/delete", /*auth.checkRoles("user_delete"),*/ async (req, res) => {
-  try {
-    let body = req.body;
+router.post(
+  "/delete",
+  /*auth.checkRoles("user_delete"),*/ async (req, res) => {
+    try {
+      let body = req.body;
 
-    if (!body._id)
-      throw new CustomError(
-        HTTP_CODES.BAD_REQUEST,
-        "Validation Error!",
-        "_id field must be filled!"
-      );
+      if (!body._id)
+        throw new CustomError(
+          HTTP_CODES.BAD_REQUEST,
+          "Validation Error!",
+          "_id field must be filled!"
+        );
 
-    await Users.deleteOne({ _id: body._id });
+      await Users.deleteOne({ _id: body._id });
 
-    await UserRoles.deleteMany({ user_id: body._id });
+      await UserRoles.deleteMany({ user_id: body._id });
 
-    res.json(Response.successResponse({ success: true }));
-  } catch (err) {
-    let errorResponse = Response.errorResponse(err);
-    res.status(errorResponse.code).json(errorResponse);
+      res.json(Response.successResponse({ success: true }));
+    } catch (err) {
+      let errorResponse = Response.errorResponse(err);
+      res.status(errorResponse.code).json(errorResponse);
+    }
   }
-});
-
+);
 
 module.exports = router;
